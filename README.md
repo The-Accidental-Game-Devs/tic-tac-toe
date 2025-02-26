@@ -12,14 +12,14 @@ A simple command-line interface (CLI) Tic-Tac-Toe game built in Rust by a Python
 1. If you haven't installed Rust yet, follow the [Rust installation Guide](https://www.rust-lang.org/tools/install)
 2. Clone the Repository
 
-   ```
-   bash git clone git@github.com:The-Accidental-Game-Devs/tic-tac-toe.git
+   ```bash
+   git clone git@github.com:The-Accidental-Game-Devs/tic-tac-toe.git
    cd tic-tac-toe
    ```
 3. Build and Run the Game
 
-   ```
-   bash cargo run
+   ```bash
+   cargo run
    ```
 
 ## How to play
