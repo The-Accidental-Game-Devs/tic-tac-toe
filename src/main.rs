@@ -1,190 +1,175 @@
 use std::io;
+mod matrix;
+mod path_finder;
 
 fn main() {
     let player1_symbol: String = String::from("X");
     let player2_symbol: String = String::from("O");
-    let players_symbol: [String; 2] = [player1_symbol, player2_symbol];
+    let player_symbols: [String; 2] = [player1_symbol, player2_symbol];
     let mut player_turn: usize = 0;
 
-    let row_size: usize = 3;
-    let col_size: usize = 3;
-    let game_length: usize = row_size * col_size;
-    let connect_amount: usize = 3;
-    let mut turn_count: usize = 0;
-    let mut game_board = crate_matrix(row_size, col_size);
+    let min_row_col_size: usize = 3;
+    let max_row_col_size: usize = 5;
+    let max_cell_width: usize = 3;
 
-    'game_loop: loop {
-        // Print game
-        print_game(&game_board);
+    'main: loop {
+        // Initialize or restart turn_count
+        let mut turn_count: usize = 0;
 
-        // Print prompt
-        println!("Player-{} turn.", players_symbol[player_turn]);
-        println!("Enter empty index between 0-{}: ", game_length - 1);
+        // Ask player to enter row_col_size
+        let row_col_size = num_input(
+            &format!(
+                "Enter the size for both rows and columns between ({}-{}):",
+                min_row_col_size, max_row_col_size
+            ),
+            min_row_col_size,
+            max_row_col_size,
+        );
 
-        // Read input
-        let mut selected_index = String::new();
+        // Caculated board size base on row_col_size^2
+        let board_size: usize = row_col_size * row_col_size;
 
+        // Ask player to enter connect_amount
+        let connect_amount = num_input(
+            &format!(
+                "Enter connect amount between ({}-{}):",
+                min_row_col_size, row_col_size
+            ),
+            min_row_col_size,
+            row_col_size,
+        );
+
+        // Crate game board base on board size
+        let mut game_board = matrix::crate_matrix(row_col_size, row_col_size);
+
+        'game_loop: loop {
+            print_game(&game_board, max_cell_width);
+
+            // Ask plyer to enter index to place with current player's symbol
+            println!("Player-{} turn.", player_symbols[player_turn]);
+
+            let selected_index = num_input(
+                &format!("Enter empty index bewtween ({}-{}):", 0, board_size - 1),
+                0,
+                board_size - 1,
+            );
+
+            // Convert the selected index to row and column indices in the row_size * col_size matrix
+            // This only work for even matris.
+            let selected_row = selected_index / row_col_size;
+            let selected_col = selected_index % row_col_size;
+
+            // Check if the position is already taken
+            if player_symbols.contains(&game_board[selected_row][selected_col]) {
+                println!("This spot is already taken. Please choose other index.");
+                continue;
+            }
+
+            // Mark the spot with current player's symbol
+            game_board[selected_row][selected_col] = player_symbols[player_turn].clone();
+
+            // Count turn
+            turn_count += 1;
+
+            let mut end_game = false;
+
+            // Check win
+            if is_w(selected_row, selected_col, connect_amount, &game_board) {
+                print_game(&game_board, max_cell_width);
+                println!("Player-{} win.", player_symbols[player_turn]);
+                end_game = true;
+            }
+
+            // If no win and turn_count is equal to boaed size  it will be a draw
+            if turn_count >= board_size {
+                print_game(&game_board, max_cell_width);
+                println!("Draw.");
+                end_game = true;
+            }
+
+            // Cycle through players
+            player_turn += 1;
+            player_turn %= player_symbols.len();
+
+            if end_game {
+                break 'game_loop;
+            }
+        }
+
+        loop {
+            // Ask player to restart or end the game
+            println!("Enter q to quit or r to restart the game:");
+            let mut input = String::new();
+            io::stdin()
+                .read_line(&mut input)
+                .expect("failed to read line");
+
+            match input.trim() {
+                "r" => break,
+                "q" => break 'main,
+                _ => println!("Invalid input, please enter 'q' or 'r'"),
+            };
+        }
+    }
+}
+
+fn num_input(prompt: &str, min: usize, max: usize) -> usize {
+    loop {
+        println!("{prompt}");
+        let mut input_num = String::new();
         io::stdin()
-            .read_line(&mut selected_index)
+            .read_line(&mut input_num)
             .expect("Failed to read line");
 
-        // Convert selected_index to integer
-        let selected_index: usize = match selected_index.trim().parse() {
+        let input_num: usize = match input_num.trim().parse() {
             Ok(num) => num,
             Err(_) => {
-                println!("Please enter positive integer number.");
+                println!("Please enter integer number.");
                 continue;
             }
         };
 
-        // Check if input is within valid range (0 to game_lenght - 1).
-        if selected_index > game_length - 1 {
-            println!("Please enter a number between 0 and {}.", game_length - 1);
+        if input_num < min || input_num > max {
+            println!("Please enter a number between {} and {}.", min, max);
             continue;
         }
 
-        // Convert the input index to row and column indices in the row_size x col_size matrix
-        let selected_row = selected_index / row_size;
-        let selected_col = selected_index % col_size;
-
-        // Check if the position is already taken
-        if players_symbol.contains(&game_board[selected_row][selected_col]) {
-            println!("This spot is already taken. Please choose another index");
-            continue;
-        }
-
-        // Mark the spot with the current player's symbol
-        game_board[selected_row][selected_col] = players_symbol[player_turn].clone();
-        turn_count += 1;
-
-        // Check win
-        if check_win(selected_row, selected_col, connect_amount, &game_board) {
-            print_game(&game_board);
-            println!("Player-{} win!.", players_symbol[player_turn]);
-            break 'game_loop;
-        }
-
-        // If no win and turn_count is equal to game_length, it will be draw.
-        if turn_count >= game_length {
-            print_game(&game_board);
-            println!("Draw");
-            break 'game_loop;
-        }
-
-        player_turn += 1;
-        player_turn %= players_symbol.len();
+        return input_num;
     }
 }
 
-fn crate_matrix(row_size: usize, col_size: usize) -> Vec<Vec<String>> {
-    let mut matrix: Vec<Vec<String>> = vec![vec![String::new(); col_size]; row_size];
-    for row in 0..row_size {
-        for col in 0..col_size {
-            let num = row * col_size + col;
-            matrix[row][col] = num.to_string();
+fn print_game(game_board: &Vec<Vec<String>>, max_cell_width: usize) {
+    for (i, row) in game_board.iter().enumerate() {
+        // Format each cell to match `max_cell_width`
+        let mut formatted_row: Vec<String> = vec![];
+        // Format value by centering it with a width of `max_cell_width`
+        for value in row {
+            let formatted_value = format!("{:^max_cell_width$}", value);
+            formatted_row.push(formatted_value);
+        }
+
+        // Print the row with spaces around "|"
+        println!("{}", formatted_row.join(" | "));
+
+        // Print separator if it's not the last row
+        if i < game_board.len() - 1 {
+            println!("{}", "-".repeat(formatted_row.join(" | ").len()))
         }
     }
-    matrix
 }
 
-fn print_game(matrix: &Vec<Vec<String>>) {
-    println!("");
-
-    for (i, row) in matrix.iter().enumerate() {
-        println!("{}", row.join(" | "));
-
-        if i < matrix.len() - 1 {
-            println!("{}", "-".repeat(row.join(" | ").len()))
-        }
-    }
-    println!("");
-}
-
-fn is_index_out_of_bounds(row: i32, col: i32, row_size: usize, col_size: usize) -> bool {
-    if row < 0 || col < 0 {
-        return true;
-    }
-
-    if row >= row_size as i32 || col >= col_size as i32 {
-        return true;
-    }
-
-    false
-}
-
-fn get_connected_paths(
-    start_row: usize,
-    start_col: usize,
-    matrix: &Vec<Vec<String>>,
-) -> Vec<Vec<Vec<usize>>> {
-    let directions = [
-        [
-            [-1, 0], // Up
-            [1, 0],  // Down
-        ], // Vertical movement
-        [
-            [0, -1], // Left
-            [0, 1],  // Right
-        ], // Horizontal movement
-        [
-            [-1, 1], // Top-right
-            [1, -1], // Bottom-left
-        ], // Main diagonal movement
-        [
-            [-1, -1], // Top-left
-            [1, 1],   // Bottom-right
-        ], // Anti-diagonal movement
-    ];
-
-    // This stores all connected paths
-    let mut connected_paths: Vec<Vec<Vec<usize>>> = vec![vec![]; 4];
-
-    for (dir_index, direction_group) in directions.iter().enumerate() {
-        // Start each path with the initial position
-        connected_paths[dir_index].push(vec![start_row, start_col]);
-
-        for direction in direction_group {
-            let mut curr_row = start_row; // Current row index
-            let mut curr_col = start_col; // Current column index
-            let mut next_row = start_row as i32 + direction[0]; // Next row to check
-            let mut next_col = start_col as i32 + direction[1]; // Next column to check
-
-            loop {
-                // Stop if the next position is out of bounds
-                if is_index_out_of_bounds(next_row, next_col, matrix.len(), matrix[start_row].len())
-                {
-                    break;
-                }
-
-                /* If the next cell contains the same value as the current cell,
-                continue in this direction and add the new position to the path. */
-                if matrix[curr_row][curr_col] == matrix[next_row as usize][next_col as usize] {
-                    curr_row = next_row as usize;
-                    curr_col = next_col as usize;
-                    next_row += direction[0];
-                    next_col += direction[1];
-                    connected_paths[dir_index].push(vec![curr_row, curr_col]);
-                } else {
-                    break;
-                }
-            }
-        }
-    }
-    connected_paths
-}
-
-fn check_win(
+fn is_w(
     selected_row: usize,
     selected_col: usize,
     connect_amount: usize,
     matrix: &Vec<Vec<String>>,
 ) -> bool {
-    let connected_index = get_connected_paths(selected_row, selected_col, &matrix);
-    for row in connected_index {
+    let connected_paths = path_finder::get_connected_paths(selected_row, selected_col, matrix);
+    // Check if one of the connected_paths length is greater than or equal to connect_amount
+    for row in connected_paths {
         if row.len() >= connect_amount {
             return true;
         }
     }
-
     false
 }
