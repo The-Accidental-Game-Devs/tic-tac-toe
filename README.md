@@ -13,7 +13,7 @@ A simple command-line interface (CLI) Tic-Tac-Toe game built in Rust by a Python
 2. Clone the Repository
 
    ```bash
-   git clone git@github.com:The-Accidental-Game-Devs/tic-tac-toe.git
+   git clone https://github.com/The-Accidental-Game-Devs/tic-tac-toe.git
    cd tic-tac-toe
    ```
 3. Build and Run the Game
